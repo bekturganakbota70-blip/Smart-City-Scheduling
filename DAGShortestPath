@@ -1,0 +1,73 @@
+package graph.dagsp;
+
+import graph.metrics.Metrics;
+import java.util.*;
+
+public class DAGShortestPath {
+    private final List<List<int[]>> graph; // [v, weight]
+    private final List<Integer> topologicalOrder;
+    private final Metrics metrics;
+
+    public DAGShortestPath(List<List<int[]>> graph, List<Integer> topologicalOrder, Metrics metrics) {
+        this.graph = graph;
+        this.topologicalOrder = topologicalOrder;
+        this.metrics = metrics;
+    }
+
+    public ShortestPathResult findShortestPaths(int source) {
+        int n = graph.size();
+        int[] dist = new int[n];
+        int[] pred = new int[n];
+
+        Arrays.fill(dist, Integer.MAX_VALUE);
+        Arrays.fill(pred, -1);
+        dist[source] = 0;
+
+        for (int u : topologicalOrder) {
+            metrics.incrementOperation("relaxations");
+            if (dist[u] != Integer.MAX_VALUE) {
+                for (int[] edge : graph.get(u)) {
+                    int v = edge[0];
+                    int weight = edge[1];
+
+                    if (dist[u] + weight < dist[v]) {
+                        dist[v] = dist[u] + weight;
+                        pred[v] = u;
+                    }
+                }
+            }
+        }
+
+        return new ShortestPathResult(dist, pred);
+    }
+
+    public static class ShortestPathResult {
+        private final int[] distances;
+        private final int[] predecessors;
+
+        public ShortestPathResult(int[] distances, int[] predecessors) {
+            this.distances = distances;
+            this.predecessors = predecessors;
+        }
+
+        public int[] getDistances()
+        { return distances; }
+        public int[] getPredecessors()
+        { return predecessors; }
+
+        public List<Integer> reconstructPath(int target) {
+            if (predecessors[target] == -1 && target != 0) return new ArrayList<>();
+
+            List<Integer> path = new ArrayList<>();
+            for (int v = target; v != -1; v = predecessors[v]) {
+                path.add(v);
+            }
+            Collections.reverse(path);
+            return path;
+        }
+    }
+
+    public Metrics getMetrics() {
+        return metrics;
+    }
+}
