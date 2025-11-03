@@ -1,4 +1,6 @@
 Smart City Scheduling - Graph Algorithms
+
+
 A Java implementation of graph algorithms for urban task scheduling, featuring Strongly Connected Components (SCC), Topological Sorting, and DAG Shortest Path calculations.
 
  -Project Overview
@@ -27,8 +29,8 @@ Output: Valid topological order of the condensation DAG
 3. DAG Shortest Paths
    Time Complexity: O(V + E)
 
-Output:
 
+Output:
 Smart City Scheduling Analysis 
 Nodes: 8
 Edges: 7
