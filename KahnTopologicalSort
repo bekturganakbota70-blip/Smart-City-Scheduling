@@ -1,0 +1,58 @@
+package graph.topo;
+
+import graph.metrics.Metrics;
+import java.util.*;
+
+public class KahnTopologicalSort implements TopologicalSort {
+    private final List<List<Integer>> graph;
+    private final Metrics metrics;
+
+    public KahnTopologicalSort(List<List<Integer>> graph, Metrics metrics) {
+        this.graph = graph;
+        this.metrics = metrics;
+    }
+
+    @Override
+    public List<Integer> sort() {
+        int n = graph.size();
+        int[] inDegree = new int[n];
+
+        // Enhanced for loop
+        for (List<Integer> neighbors : graph) {
+            for (int v : neighbors) {
+                inDegree[v]++;
+                metrics.incrementOperation("in_degree_calc");
+            }
+        }
+
+        Queue<Integer> queue = new LinkedList<>();
+        for (int i = 0; i < n; i++) {
+            if (inDegree[i] == 0) {
+                queue.add(i);
+                metrics.incrementOperation("queue_pushes");
+            }
+        }
+
+        List<Integer> result = new ArrayList<>();
+        while (!queue.isEmpty()) {
+            int u = queue.poll();
+            metrics.incrementOperation("queue_pops");
+            result.add(u);
+
+            for (int v : graph.get(u)) {
+                inDegree[v]--;
+                if (inDegree[v] == 0) {
+                    queue.add(v);
+                    metrics.incrementOperation("queue_pushes");
+                }
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    public Metrics getMetrics() {
+        return metrics;
+    }
+}
