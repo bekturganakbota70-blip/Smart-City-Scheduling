@@ -1,0 +1,74 @@
+package graph.dagsp;
+
+import graph.metrics.Metrics;
+import java.util.*;
+
+public class CriticalPath {
+    private final List<List<int[]>> graph; // [v, weight]
+    private final List<Integer> topologicalOrder;
+    private final Metrics metrics;
+
+    public CriticalPath(List<List<int[]>> graph, List<Integer> topologicalOrder, Metrics metrics) {
+        this.graph = graph;
+        this.topologicalOrder = topologicalOrder;
+        this.metrics = metrics;
+    }
+
+    public CriticalPathResult findCriticalPath() {
+        int n = graph.size();
+        int[] longestDist = new int[n];
+        int[] pred = new int[n];
+        Arrays.fill(pred, -1);
+
+        for (int u : topologicalOrder) {
+            metrics.incrementOperation("longest_path_relaxations");
+            for (int[] edge : graph.get(u)) {
+                int v = edge[0];
+                int weight = edge[1];
+
+                if (longestDist[u] + weight > longestDist[v]) {
+                    longestDist[v] = longestDist[u] + weight;
+                    pred[v] = u;
+                }
+            }
+        }
+
+        // Find the vertex with maximum distance
+        int maxDist = 0;
+        int endVertex = 0;
+        for (int i = 0; i < n; i++) {
+            if (longestDist[i] > maxDist) {
+                maxDist = longestDist[i];
+                endVertex = i;
+            }
+        }
+
+        return new CriticalPathResult(maxDist, reconstructPath(pred, endVertex));
+    }
+
+    private List<Integer> reconstructPath(int[] pred, int endVertex) {
+        List<Integer> path = new ArrayList<>();
+        for (int v = endVertex; v != -1; v = pred[v]) {
+            path.add(v);
+        }
+        Collections.reverse(path);
+        return path;
+    }
+
+    public static class CriticalPathResult {
+        private final int length;
+        private final List<Integer> path;
+
+        public CriticalPathResult(int length, List<Integer> path) {
+            this.length = length;
+            this.path = path;
+        }
+
+        public int getLength() { return length; }
+        public List<Integer> getPath() { return path; }
+    }
+
+    public Metrics getMetrics() {
+        return metrics;
+    }
+}
