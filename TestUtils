@@ -1,0 +1,51 @@
+package graph;
+
+import graph.metrics.Metrics;
+import java.util.*;
+
+public class TestUtils {
+
+    public static class TestMetrics implements Metrics {
+        private final Map<String, Long> operations = new HashMap<>();
+        private long executionTime;
+
+        @Override
+        public void incrementOperation(String operation) {
+            operations.put(operation, operations.getOrDefault(operation, 0L) + 1);
+        }
+
+        @Override
+        public long getOperationCount(String operation) {
+            return operations.getOrDefault(operation, 0L);
+        }
+
+        @Override
+        public void setExecutionTime(long nanos) {
+            this.executionTime = nanos;
+        }
+
+        @Override
+        public long getExecutionTime() {
+            return executionTime;
+        }
+
+        // Remove reset() method
+    }
+
+    public static boolean isTopologicalOrder(List<List<Integer>> graph, List<Integer> order) {
+        int n = graph.size();
+        int[] position = new int[n];
+        for (int i = 0; i < order.size(); i++) {
+            position[order.get(i)] = i;
+        }
+
+        for (int u = 0; u < n; u++) {
+            for (int v : graph.get(u)) {
+                if (position[u] > position[v]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+}
