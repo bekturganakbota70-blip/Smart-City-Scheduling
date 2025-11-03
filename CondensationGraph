@@ -1,0 +1,52 @@
+package graph.scc;
+
+import java.util.*;
+
+public class CondensationGraph {
+    private final List<List<Integer>> graph;
+    private final List<List<Integer>> condensation;
+    private final int[] componentId;
+
+    public CondensationGraph(List<List<Integer>> originalGraph, List<List<Integer>> components) {
+        this.graph = originalGraph;
+        this.condensation = new ArrayList<>();
+        this.componentId = new int[originalGraph.size()];
+
+        buildCondensationGraph(components);
+    }
+
+    private void buildCondensationGraph(List<List<Integer>> components) {
+        for (int i = 0; i < components.size(); i++) {
+            condensation.add(new ArrayList<>());
+        }
+
+        for (int compId = 0; compId < components.size(); compId++) {
+            for (int node : components.get(compId)) {
+                componentId[node] = compId;
+            }
+        }
+
+        Set<String> edges = new HashSet<>();
+        for (int u = 0; u < graph.size(); u++) {
+            for (int v : graph.get(u)) {
+                int compU = componentId[u];
+                int compV = componentId[v];
+                if (compU != compV) {
+                    String edge = compU + "->" + compV;
+                    if (!edges.contains(edge)) {
+                        edges.add(edge);
+                        condensation.get(compU).add(compV);
+                    }
+                }
+            }
+        }
+    }
+
+    public List<List<Integer>> getCondensationGraph() {
+        return condensation;
+    }
+
+    public int[] getComponentId() {
+        return componentId;
+    }
+}
