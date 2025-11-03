@@ -1,0 +1,160 @@
+package graph;
+
+import graph.model.Graph;
+import graph.scc.*;
+import graph.topo.*;
+import graph.dagsp.*;
+import graph.metrics.Metrics;
+import com.google.gson.Gson;
+import java.io.*;
+import java.util.*;
+
+public class Main {
+
+    private static class BasicMetrics implements Metrics {
+        private final Map<String, Long> operations = new HashMap<>();
+        private long executionTime;
+
+        @Override
+        public void incrementOperation(String operation) {
+            operations.put(operation, operations.getOrDefault(operation, 0L) + 1);
+        }
+
+        @Override
+        public long getOperationCount(String operation) {
+            return operations.getOrDefault(operation, 0L);
+        }
+
+        @Override
+        public void setExecutionTime(long nanos) {
+            this.executionTime = nanos;
+        }
+
+        @Override
+        public long getExecutionTime() {
+            return executionTime;
+        }
+    }
+
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Usage: java graph.Main <input-file>");
+            return;
+        }
+
+        try {
+            Gson gson = new Gson();
+            Graph graphData = gson.fromJson(new FileReader(args[0]), Graph.class);
+
+            System.out.println("=== Smart City Scheduling Analysis ===");
+            System.out.println("Nodes: " + graphData.getN());
+            System.out.println("Edges: " + graphData.getEdges().size());
+            System.out.println("Source: " + graphData.getSource());
+            System.out.println("Weight Model: " + graphData.getWeightModel());
+
+            // Build adjacency lists
+            List<List<Integer>> adj = buildAdjacencyList(graphData);
+            List<List<int[]>> weightedAdj = buildWeightedAdjacencyList(graphData);
+
+            // 1. Find SCCs
+            System.out.println("\n=== Strongly Connected Components ===");
+            Metrics sccMetrics = new BasicMetrics();
+            long startTime = System.nanoTime();
+            SCC scc = new TarjanSCC(adj, graphData.getN(), sccMetrics);
+            List<List<Integer>> components = scc.findSCCs();
+            sccMetrics.setExecutionTime(System.nanoTime() - startTime);
+
+            printSCCResults(components, sccMetrics);
+
+            // 2. Build condensation graph and topological sort
+            System.out.println("\n=== Condensation Graph & Topological Sort ===");
+            CondensationGraph condensation = new CondensationGraph(adj, components);
+            List<List<Integer>> condensationGraph = condensation.getCondensationGraph();
+
+            Metrics topoMetrics = new BasicMetrics();
+            startTime = System.nanoTime();
+            TopologicalSort topoSort = new KahnTopologicalSort(condensationGraph, topoMetrics);
+            List<Integer> topoOrder = topoSort.sort();
+            topoMetrics.setExecutionTime(System.nanoTime() - startTime);
+
+            printTopoResults(topoOrder, topoMetrics);
+
+            // 3. Shortest and Longest Paths
+            System.out.println("\n=== Shortest and Longest Paths ===");
+            Metrics spMetrics = new BasicMetrics();
+            startTime = System.nanoTime();
+            DAGShortestPath shortestPath = new DAGShortestPath(weightedAdj, topoOrder, spMetrics);
+            DAGShortestPath.ShortestPathResult spResult = shortestPath.findShortestPaths(graphData.getSource());
+            spMetrics.setExecutionTime(System.nanoTime() - startTime);
+
+            Metrics cpMetrics = new BasicMetrics();
+            startTime = System.nanoTime();
+            CriticalPath criticalPath = new CriticalPath(weightedAdj, topoOrder, cpMetrics);
+            CriticalPath.CriticalPathResult cpResult = criticalPath.findCriticalPath();
+            cpMetrics.setExecutionTime(System.nanoTime() - startTime);
+
+            printPathResults(spResult, cpResult, graphData.getSource(), spMetrics, cpMetrics);
+
+        } catch (IOException e) {
+            System.err.println("Error reading file: " + e.getMessage());
+        }
+    }
+
+    private static List<List<Integer>> buildAdjacencyList(Graph graphData) {
+        List<List<Integer>> adj = new ArrayList<>();
+        for (int i = 0; i < graphData.getN(); i++) {
+            adj.add(new ArrayList<>());
+        }
+        for (Graph.Edge edge : graphData.getEdges()) {
+            adj.get(edge.getU()).add(edge.getV());
+        }
+        return adj;
+    }
+
+    private static List<List<int[]>> buildWeightedAdjacencyList(Graph graphData) {
+        List<List<int[]>> adj = new ArrayList<>();
+        for (int i = 0; i < graphData.getN(); i++) {
+            adj.add(new ArrayList<>());
+        }
+        for (Graph.Edge edge : graphData.getEdges()) {
+            adj.get(edge.getU()).add(new int[]{edge.getV(), edge.getW()});
+        }
+        return adj;
+    }
+
+    private static void printSCCResults(List<List<Integer>> components, Metrics metrics) {
+        System.out.println("Number of SCCs: " + components.size());
+        for (int i = 0; i < components.size(); i++) {
+            System.out.println("SCC " + i + ": " + components.get(i) + " (size: " + components.get(i).size() + ")");
+        }
+        System.out.println("SCC Metrics - Time: " + metrics.getExecutionTime() + "ns, " +
+                "DFS visits: " + metrics.getOperationCount("DFS_visits") + ", " +
+                "DFS edges: " + metrics.getOperationCount("DFS_edges"));
+    }
+
+    private static void printTopoResults(List<Integer> topoOrder, Metrics metrics) {
+        System.out.println("Topological Order: " + topoOrder);
+        System.out.println("Topo Sort Metrics - Time: " + metrics.getExecutionTime() + "ns, " +
+                "Queue pushes: " + metrics.getOperationCount("queue_pushes") + ", " +
+                "Queue pops: " + metrics.getOperationCount("queue_pops"));
+    }
+
+    private static void printPathResults(DAGShortestPath.ShortestPathResult spResult,
+                                         CriticalPath.CriticalPathResult cpResult,
+                                         int source, Metrics spMetrics, Metrics cpMetrics) {
+        System.out.println("Shortest Paths from source " + source + ":");
+        for (int i = 0; i < spResult.getDistances().length; i++) {
+            if (spResult.getDistances()[i] != Integer.MAX_VALUE) {
+                System.out.println("  to " + i + ": " + spResult.getDistances()[i] +
+                        " (path: " + spResult.reconstructPath(i) + ")");
+            }
+        }
+
+        System.out.println("Critical Path (Longest):");
+        System.out.println("  Length: " + cpResult.getLength());
+        System.out.println("  Path: " + cpResult.getPath());
+
+        System.out.println("Path Metrics - Shortest Time: " + spMetrics.getExecutionTime() + "ns, " +
+                "Longest Time: " + cpMetrics.getExecutionTime() + "ns");
+    }
+}
