@@ -1,0 +1,27 @@
+package graph.model;
+
+import java.util.List;
+
+public class Graph {
+    private boolean directed;
+    private int n;
+    private List<Edge> edges;
+    private int source;
+    private String weight_model;
+
+    public static class Edge {
+        private int u;
+        private int v;
+        private int w;
+
+        public int getU() { return u; }
+        public int getV() { return v; }
+        public int getW() { return w; }
+    }
+
+    public boolean isDirected() { return directed; }
+    public int getN() { return n; }
+    public List<Edge> getEdges() { return edges; }
+    public int getSource() { return source; }
+    public String getWeightModel() { return weight_model; }
+}
