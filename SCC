@@ -1,0 +1,9 @@
+package graph.scc;
+
+import graph.metrics.Metrics;
+import java.util.List;
+
+public interface SCC {
+    List<List<Integer>> findSCCs();
+    Metrics getMetrics();
+}
