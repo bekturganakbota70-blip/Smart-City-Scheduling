@@ -1,0 +1,9 @@
+package graph.topo;
+
+import graph.metrics.Metrics;
+import java.util.List;
+
+public interface TopologicalSort {
+    List<Integer> sort();
+    Metrics getMetrics();
+}
