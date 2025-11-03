@@ -1,0 +1,81 @@
+package graph.scc;
+
+import graph.metrics.Metrics;
+import java.util.*;
+
+public class TarjanSCC implements SCC {
+    private final List<List<Integer>> graph;
+    private final int n;
+    private final Metrics metrics;
+
+    private int index;
+    private int[] indices;
+    private int[] lowlink;
+    private boolean[] onStack;
+    private Stack<Integer> stack;
+    private List<List<Integer>> components;
+
+    public TarjanSCC(List<List<Integer>> graph, int n, Metrics metrics) {
+        this.graph = graph;
+        this.n = n;
+        this.metrics = metrics;
+    }
+
+    @Override
+    public List<List<Integer>> findSCCs() {
+        initialize();
+
+        for (int i = 0; i < n; i++) {
+            metrics.incrementOperation("DFS_visits");
+            if (indices[i] == -1) {
+                strongConnect(i);
+            }
+        }
+
+        return components;
+    }
+
+    private void initialize() {
+        index = 0;
+        indices = new int[n];
+        lowlink = new int[n];
+        onStack = new boolean[n];
+        stack = new Stack<>();
+        components = new ArrayList<>();
+        Arrays.fill(indices, -1);
+    }
+
+    private void strongConnect(int v) {
+        indices[v] = index;
+        lowlink[v] = index;
+        index++;
+        stack.push(v);
+        onStack[v] = true;
+
+        for (int neighbor : graph.get(v)) {
+            metrics.incrementOperation("DFS_edges");
+            if (indices[neighbor] == -1) {
+                strongConnect(neighbor);
+                lowlink[v] = Math.min(lowlink[v], lowlink[neighbor]);
+            } else if (onStack[neighbor]) {
+                lowlink[v] = Math.min(lowlink[v], indices[neighbor]);
+            }
+        }
+
+        if (lowlink[v] == indices[v]) {
+            List<Integer> component = new ArrayList<>();
+            int node;
+            do {
+                node = stack.pop();
+                onStack[node] = false;
+                component.add(node);
+            } while (node != v);
+            components.add(component);
+        }
+    }
+
+    @Override
+    public Metrics getMetrics() {
+        return metrics;
+    }
+}
