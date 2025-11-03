@@ -1,0 +1,143 @@
+package graph.scc;
+
+import graph.TestUtils;
+import graph.metrics.Metrics;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class SCCTest {
+
+    @Test
+    public void testSingleNode() {
+        List<List<Integer>> graph = new ArrayList<>();
+        graph.add(new ArrayList<>());
+
+        Metrics metrics = new TestUtils.TestMetrics();
+        SCC scc = new TarjanSCC(graph, 1, metrics);
+        List<List<Integer>> components = scc.findSCCs();
+
+        assertEquals(1, components.size());
+        assertEquals(1, components.get(0).size());
+        assertEquals(0, (int) components.get(0).get(0));
+    }
+
+    @Test
+    public void testSimpleCycle() {
+        List<List<Integer>> graph = new ArrayList<>();
+        graph.add(Arrays.asList(1));
+        graph.add(Arrays.asList(2));
+        graph.add(Arrays.asList(0));
+        graph.add(new ArrayList<>());
+
+        Metrics metrics = new TestUtils.TestMetrics();
+        SCC scc = new TarjanSCC(graph, 4, metrics);
+        List<List<Integer>> components = scc.findSCCs();
+
+        assertEquals(2, components.size());
+
+        boolean foundCycle = false;
+        boolean foundIsolated = false;
+
+        for (List<Integer> component : components) {
+            if (component.size() == 3) {
+                foundCycle = true;
+                assertTrue(component.contains(0));
+                assertTrue(component.contains(1));
+                assertTrue(component.contains(2));
+            } else if (component.size() == 1 && component.get(0) == 3) {
+                foundIsolated = true;
+            }
+        }
+
+        assertTrue(foundCycle);
+        assertTrue(foundIsolated);
+    }
+
+    @Test
+    public void testMultipleSCCs() {
+        List<List<Integer>> graph = new ArrayList<>();
+        graph.add(Arrays.asList(1));
+        graph.add(Arrays.asList(0));
+        graph.add(Arrays.asList(3));
+        graph.add(Arrays.asList(2));
+        graph.add(new ArrayList<>());
+
+        Metrics metrics = new TestUtils.TestMetrics();
+        SCC scc = new TarjanSCC(graph, 5, metrics);
+        List<List<Integer>> components = scc.findSCCs();
+
+        assertEquals(3, components.size());
+
+        Set<Integer> componentSizes = new HashSet<>();
+        for (List<Integer> component : components) {
+            componentSizes.add(component.size());
+        }
+
+        assertTrue(componentSizes.contains(2));
+        assertTrue(componentSizes.contains(1));
+    }
+
+    @Test
+    public void testDAG() {
+        List<List<Integer>> graph = new ArrayList<>();
+        graph.add(Arrays.asList(1));
+        graph.add(Arrays.asList(2));
+        graph.add(Arrays.asList(3));
+        graph.add(new ArrayList<>());
+
+        Metrics metrics = new TestUtils.TestMetrics();
+        SCC scc = new TarjanSCC(graph, 4, metrics);
+        List<List<Integer>> components = scc.findSCCs();
+
+        assertEquals(4, components.size());
+        for (List<Integer> component : components) {
+            assertEquals(1, component.size());
+        }
+    }
+
+    @Test
+    public void testCondensationGraph() {
+        List<List<Integer>> graph = new ArrayList<>();
+        graph.add(Arrays.asList(1));
+        graph.add(Arrays.asList(0));
+        graph.add(Arrays.asList(3));
+        graph.add(Arrays.asList(2));
+        graph.add(Arrays.asList(0));
+
+        Metrics metrics = new TestUtils.TestMetrics();
+        SCC scc = new TarjanSCC(graph, 5, metrics);
+        List<List<Integer>> components = scc.findSCCs();
+
+        CondensationGraph condensation = new CondensationGraph(graph, components);
+        List<List<Integer>> condensationGraph = condensation.getCondensationGraph();
+        int[] componentId = condensation.getComponentId();
+
+        assertEquals(3, condensationGraph.size());
+        assertEquals(componentId[0], componentId[1]);
+        assertEquals(componentId[2], componentId[3]);
+        assertNotEquals(componentId[0], componentId[2]);
+        assertNotEquals(componentId[0], componentId[4]);
+    }
+
+    @Test
+    public void testMetricsCollection() {
+        List<List<Integer>> graph = new ArrayList<>();
+        graph.add(Arrays.asList(1));
+        graph.add(Arrays.asList(0));
+        graph.add(new ArrayList<>());
+
+        TestUtils.TestMetrics metrics = new TestUtils.TestMetrics();
+        SCC scc = new TarjanSCC(graph, 3, metrics);
+        scc.findSCCs();
+
+        assertTrue(metrics.getOperationCount("DFS_visits") > 0);
+        assertTrue(metrics.getOperationCount("DFS_edges") > 0);
+        assertTrue(metrics.getExecutionTime() >= 0);
+    }
+}
